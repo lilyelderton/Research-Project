@@ -59,4 +59,4 @@ tidy_books %>%
   geom_col() +
   labs(y = NULL)
 
-
+## can't install gutenbergr with this version of R
