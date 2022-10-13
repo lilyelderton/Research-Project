@@ -60,7 +60,68 @@ tab2 <- tab %>%
 #write data to file
 write.table(tab, "data.csv")
 
+##################################
+## cannot read in with fulltext ##
+##################################
+
+## read in abstracts using easyPubMed 
+library(rentrez)
+
+# get ids for all papers on pubmed mentioning immunopsychiatry
+ip_ids <- entrez_search(db = "pubmed", 
+                        "immunopsychiatry", 
+                        retmax = 2000, 
+                        use_history = T)
+
+# get abstracts from the papers with these ids
+ip_abstracts <- entrez_fetch(db = "pubmed", 
+                             web_history = ip_ids$web_history, 
+                             rettype = "abstract")
+
+library(dplyr)
+ip_df <- tibble(line = 1:126, text = ip_abstracts)
 
 
+## read in abstracts using RISmed
+library(RISmed)
+
+# set topic for search
+topic <- "immunopsychiatry"
+
+# search for topic on pubmed
+search_query <- EUtilsSummary(topic, retmax=131)
+summary(search_query)
+
+# look at ids of the returned articles
+QueryId(search_query)
+
+# use EUtilGet to fetch the actual data
+records <- EUtilsGet(search_query)
+class(records)
+
+# collect article title, abstract and ID
+ip_data <- data.frame("ID" = ArticleId(records), 
+                      "Title" = ArticleTitle(records),
+                      "Abstract" = AbstractText(records))
+head(ip_data,1)
+
+ip_data$Abstract <- as.character(ip_data$Abstract)
+ip_data$Abstract <- gsub("[[:punct:]]", " ", ip_data$Abstract, fixed = TRUE)
+
+# write to file 
+write.csv(ip_data, "/Users/lilyelderton/Documents/Year 4/Research Project/Practice/Project Practice/data_raw/ip_data_raw.csv")
+
+# read in file
+library(readr)
+ip_data_raw <- read_csv("data_raw/ip_data_raw.csv")
+View(ip_data_raw)
+
+## tidy the text
+library(tidytext)
+library(dplyr)
+
+# tokenise words in abstract 
+tidy_ip <- ip_data %>% 
+  unnest_tokens(word, Abstract) # abstract to specify it is that being tokenised, not the title
 
 
