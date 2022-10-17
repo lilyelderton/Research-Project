@@ -86,10 +86,10 @@ ip_df <- tibble(line = 1:126, text = ip_abstracts)
 library(RISmed)
 
 # set topic for search
-topic <- "immunopsychiatry"
+topic <- "immunopsychiatry OR immuno-psychiatry" # search literally what you'd put inot pubmed
 
 # search for topic on pubmed
-search_query <- EUtilsSummary(topic, retmax=131)
+search_query <- EUtilsSummary(topic, retmax=200)
 summary(search_query)
 
 # look at ids of the returned articles
@@ -100,28 +100,52 @@ records <- EUtilsGet(search_query)
 class(records)
 
 # collect article title, abstract and ID
-ip_data <- data.frame("ID" = ArticleId(records), 
+ip_data <- data.frame("ID" = ArticleId(records),
+                      "Year" = YearPubmed(records), 
                       "Title" = ArticleTitle(records),
-                      "Abstract" = AbstractText(records))
+                      "Abstract" = AbstractText(records)) # check records to get field names
 head(ip_data,1)
 
 ip_data$Abstract <- as.character(ip_data$Abstract)
-ip_data$Abstract <- gsub("[[:punct:]]", " ", ip_data$Abstract, fixed = TRUE)
+ip_data$Abstract <- gsub(",", " ", ip_data$Abstract, fixed = TRUE)
 
 # write to file 
 write.csv(ip_data, "/Users/lilyelderton/Documents/Year 4/Research Project/Practice/Project Practice/data_raw/ip_data_raw.csv")
 
+# add in missing abstracts manually on excel
+# where abstracts aren't given, the first paragraph(s) of the introduction are used in place where appropriate
 # read in file
 library(readr)
-ip_data_raw <- read_csv("data_raw/ip_data_raw.csv")
+ip_data_raw <- read_csv("data_raw/ip_data_raw_abstracts_added.csv")
 View(ip_data_raw)
 
 ## tidy the text
 library(tidytext)
 library(dplyr)
+library(stringr)
+
+# remove NA abstracts 
+ip_data_raw <- na.omit(ip_data_raw)
 
 # tokenise words in abstract 
-tidy_ip <- ip_data %>% 
-  unnest_tokens(word, Abstract) # abstract to specify it is that being tokenised, not the title
+tidy_ip <- ip_data_raw %>% 
+  mutate(Abstract = str_replace_all(Abstract, "\\s-", "_")) %>% 
+  mutate(Abstract = str_replace_all(Abstract, "-", "_")) %>%      # these mutations help keep hyphenated words together 
+  unnest_tokens(word, Abstract) %>%  # abstract to specify it is that being tokenised, not the title
+  anti_join(stop_words)
 
+# find the most common words 
+tidy_ip %>% 
+  count(word, sort = TRUE) # word counts stored in a tidy data frame 
+
+# visualise the most common words
+library(ggplot2)
+
+tidy_ip %>% 
+  count(word, sort = TRUE) %>% 
+  filter(n > 50) %>% 
+  mutate(word = reorder(word, n)) %>% 
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL)
 
