@@ -108,5 +108,3 @@ wrong_words %>%
   count(document, consensus, term, wt = count) %>%
   ungroup() %>%
   arrange(desc(n))
-
-
